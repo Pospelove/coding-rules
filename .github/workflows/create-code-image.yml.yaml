@@ -1,0 +1,58 @@
+name: Generate Code Image with Carbon
+
+# This workflow is triggered manually from the Actions tab
+on:
+  workflow_dispatch:
+    inputs:
+      code:
+        description: 'The code snippet to be rendered into an image.'
+        required: true
+        # The 'string' type will render as a multi-line textarea in the GitHub UI
+        type: string
+      lang:
+        description: 'Language identifier / file extension (e.g., js, py, go, ts)'
+        required: true
+        default: 'auto'
+        type: string
+      output_filename:
+        description: 'The desired name for the output image file (without .png extension)'
+        required: true
+        default: 'carbon-image'
+        type: string
+
+jobs:
+  generate-image:
+    name: Generate Carbon Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          # carbon-now-cli requires a recent version of Node.js
+          node-version: '20'
+
+      - name: Create code file from input
+        # We write the user's code input into a temporary file.
+        # Using an environment variable is safer for multi-line strings and special characters.
+        run: echo "$CODE_INPUT" > code_to_render.${{ inputs.lang }}
+        env:
+          CODE_INPUT: ${{ inputs.code }}
+
+      - name: Generate image with carbon-now-cli
+        # We use npx to run the CLI without a global installation.
+        # --save-to specifies the output directory (current directory).
+        # --save-as sets the filename (without extension).
+        run: >
+          npx carbon-now-cli code_to_render.${{ inputs.lang }}
+          --save-to .
+          --save-as ${{ inputs.output_filename }}
+
+      - name: Upload generated image as an artifact
+        # This step makes the final PNG image available for download from the workflow run summary.
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.output_filename }}
+          path: ${{ inputs.output_filename }}.png
+          # The artifact will be retained for 1 day
+          retention-days: 1
