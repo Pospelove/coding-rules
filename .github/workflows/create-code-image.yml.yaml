@@ -1,58 +1,73 @@
-name: Generate Code Image with Carbon
+# .github/workflows/create-code-image.yml
 
-# This workflow is triggered manually from the Actions tab
+name: Generate and Commit Code Image
+
+# This workflow now triggers on pushes to the specified branch(es)
+# when files matching the path pattern are modified.
 on:
-  workflow_dispatch:
-    inputs:
-      code:
-        description: 'The code snippet to be rendered into an image.'
-        required: true
-        # The 'string' type will render as a multi-line textarea in the GitHub UI
-        type: string
-      lang:
-        description: 'Language identifier / file extension (e.g., js, py, go, ts)'
-        required: true
-        default: 'auto'
-        type: string
-      output_filename:
-        description: 'The desired name for the output image file (without .png extension)'
-        required: true
-        default: 'carbon-image'
-        type: string
+  push:
+    branches:
+      - main # Or your default branch, e.g., master
+    paths:
+      - 'linkedin/**.example'
+
+# Grant the GITHUB_TOKEN permissions to write content back to the repository.
+permissions:
+  contents: write
 
 jobs:
-  generate-image:
-    name: Generate Carbon Image
+  generate-and-commit-image:
+    name: Generate & Commit Carbon Image
     runs-on: ubuntu-latest
-
+    # This condition prevents the job from running on deleted files.
+    if: "contains(github.event.head_commit.message, '[skip ci]')"
+    
     steps:
-      - name: Set up Node.js
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        # We need to fetch the entire history to accurately determine changed files.
+        with:
+          fetch-depth: 0
+
+      - name: 📝 Get Changed Files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
+        with:
+          # This pattern ensures we only act on the files that triggered the workflow.
+          files: linkedin/**.example
+
+      - name: ⚙️ Set up Node.js
+        # This step only runs if there were matching files changed.
+        if: steps.changed-files.outputs.any_changed == 'true'
         uses: actions/setup-node@v4
         with:
-          # carbon-now-cli requires a recent version of Node.js
           node-version: '20'
 
-      - name: Create code file from input
-        # We write the user's code input into a temporary file.
-        # Using an environment variable is safer for multi-line strings and special characters.
-        run: echo "$CODE_INPUT" > code_to_render.${{ inputs.lang }}
-        env:
-          CODE_INPUT: ${{ inputs.code }}
+      - name: 🖼️ Generate Image for Each Changed File
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          # Loop through each modified '.example' file.
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            echo "🎨 Processing $file..."
+            # Dynamically determine the output directory and filename.
+            # For example, 'linkedin/script.js.example' becomes 'linkedin/script.js'.
+            DIR=$(dirname "$file")
+            FILENAME=$(basename "$file" .example)
+            
+            # Generate the image and save it to the same directory as the source file.
+            npx carbon-now-cli "$file" --save-to "$DIR" --save-as "$FILENAME"
+          done
 
-      - name: Generate image with carbon-now-cli
-        # We use npx to run the CLI without a global installation.
-        # --save-to specifies the output directory (current directory).
-        # --save-as sets the filename (without extension).
-        run: >
-          npx carbon-now-cli code_to_render.${{ inputs.lang }}
-          --save-to .
-          --save-as ${{ inputs.output_filename }}
-
-      - name: Upload generated image as an artifact
-        # This step makes the final PNG image available for download from the workflow run summary.
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ inputs.output_filename }}
-          path: ${{ inputs.output_filename }}.png
-          # The artifact will be retained for 1 day
-          retention-days: 1
+      - name: 💾 Commit and Push PNG Files
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          # Configure git with bot credentials.
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          # Add all newly generated or updated PNG files.
+          git add linkedin/**/*.png
+          
+          # Check if there are any changes to commit to avoid empty commits.
+          if ! git diff --staged --quiet; then
+            git commit -m "docs
