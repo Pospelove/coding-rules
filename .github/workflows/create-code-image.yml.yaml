@@ -68,8 +68,8 @@ jobs:
           # Add all newly generated or updated PNG files.
           git add .
           
-          # Check if there are any changes to commit to avoid empty commits.
-          if ! git diff --staged --quiet; then
-            git commit -m "docs
+          git commit -m "Upload images" --allow-empty
+          git push
+
 
 
