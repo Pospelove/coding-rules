@@ -1,0 +1,17 @@
+// Isolate complex object construction into a dedicated factory.
+class Widget {
+public:
+  int value1;
+  std::string value2;
+  Widget() = default;
+};
+
+class WidgetFactory {
+public:
+  static Widget createWidget(int a, const std::string& b) {
+    Widget w;
+    w.value1 = a * 2;
+    w.value2 = "Prefix_" + b;
+    return w;
+  }
+};
