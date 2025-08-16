@@ -1,0 +1,8 @@
+// Illustrates graceful error handling with logging instead of exceptions.
+int getValue(int input) {
+  if (input < 0 || input > 100) {
+    spdlog::error("Invalid input: {}", input); // Log the error
+    return -1; // Return a safe, neutral value
+  }
+  return input * 2;
+}
