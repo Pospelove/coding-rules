@@ -1,0 +1,65 @@
+### **Rule: Prefer Graceful Error Handling with Logging over Exception-Based Control Flow**
+
+***
+
+#### **1. General Principle**
+
+In systems that must remain operational despite partial failures, such as virtual machines, game engines, or servers, errors should be handled gracefully at the point of failure. Instead of throwing exceptions that would disrupt or terminate the execution stack, operations should preemptively validate their inputs.
+
+Upon detecting an invalid input or state, the operation should:
+1.  **Halt the specific operation.**
+2.  **Return a safe, neutral value** (e.g., `null`, `None`, `0`, an empty object) or transition to a safe state.
+3.  **Log a descriptive error message** with relevant context for diagnostics.
+
+This pattern contains the failure, maintains overall program stability, and provides clear, actionable information for debugging.
+
+#### **2. Motivation and Value**
+
+This approach provides several key advantages over relying on exceptions for handling predictable errors like invalid user input or script logic flaws.
+
+*   **System Resilience:** An error in one subordinate component (e.g., a single script running in a VM) does not crash the entire host application. The system can continue to execute other tasks, isolating the failure.
+*   **Simplified Control Flow:** Error handling logic is explicit and local to the operation being performed (e.g., an `if/else` block). This avoids the non-linear and potentially hidden control paths of `try/catch` blocks, which can span multiple functions and complicate static analysis and human comprehension.
+*   **Enhanced Debuggability:** Detailed logs create a persistent, chronological record of failures. This is invaluable for post-mortem analysis, as it provides context (e.g., invalid values, timestamps) that may be lost in an exception-based crash. This clear, sequential data is easier for both human developers and automated tools (including LLMs) to parse and diagnose.
+
+#### **3. Example Analysis**
+
+The provided code change exemplifies this principle in the context of a virtual machine's array access opcodes.
+
+**Context:** The functions `op_Array_GetElement` and `op_Array_SetElement` are critical operations within a virtual machine that executes scripts. An invalid array index provided by a script is a common and predictable error.
+
+**"Before" Implementation:**
+```cpp
+// Get
+*args[0] = (*args[1]).pArray->at((int32_t)(*args[2]));
+// Set
+(*args[0]).pArray->at((int32_t)(*args[1])) = *args[2];
+```
+*   This code uses `std::vector::at()`, which performs bounds checking and throws a `std::out_of_range` exception on failure.
+*   **Problem:** An invalid index from a script would throw an exception. If not caught by a complex, higher-level handler, this could halt the script's execution or even terminate the entire VM, violating the principle of resilience.
+
+**"After" Implementation (Applying the Rule):**
+```cpp
+// Get
+const int index = static_cast<int>(*args[2]);
+if (/*...type is valid...*/ && index >= 0 && index < (*args[1]).pArray->size()) {
+  *args[0] = (*args[1]).pArray->operator[](index);
+} else {
+  *args[0] = VarValue::None(); // Return a safe, neutral value
+  spdlog::error("...Invalid array index"); // Log a descriptive error
+}
+
+// Set
+const int index = static_cast<int>(*args[1]);
+if (/*...type is valid...*/ && index >= 0 && index < (*args[0]).pArray->size()) {
+  (*args[0]).pArray->operator[](index) = *args[2];
+} else {
+  spdlog::error("...Invalid array index"); // Log a descriptive error and do nothing
+}
+```
+*   **Validation:** The code now explicitly checks if the index type is valid and if the index value is within the array's bounds *before* attempting access.
+*   **Graceful Handling:**
+    *   On a failed `GetElement`, it returns `VarValue::None()`. The script can continue running, albeit with a "null" value, preventing a crash.
+    *   On a failed `SetElement`, it simply does nothing, preventing a write to invalid memory.
+*   **Reporting:** In both failure cases, it logs a clear error message. This informs the developer of the script logic error without destabilizing the host application.
+
+This change transforms a potentially fatal error into a recoverable, logged event, thereby increasing system robustness and simplifying the debugging process.
