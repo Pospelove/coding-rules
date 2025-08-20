@@ -1,0 +1,16 @@
+// Example demonstrating dependency pinning for a C++ project using a hypothetical package manager.
+#include <iostream>
+#include <string>
+
+int main() {
+  // Imagine a scenario where we need a specific version of a logging library.
+  std::string logging_library_version = "2.3.1"; 
+
+  // Instead of relying on the latest version, we explicitly specify the desired version.
+  std::cout << "Using logging library version: " << logging_library_version << std::endl;
+
+  // In a real project, this would translate to specifying the version in a package manager file
+  // (e.g., package.json, requirements.txt, CMakeLists.txt with a specific vcpkg triplet).
+  
+  return 0;
+}
