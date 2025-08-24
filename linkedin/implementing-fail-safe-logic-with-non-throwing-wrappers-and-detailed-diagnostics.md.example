@@ -1,0 +1,59 @@
+#include <optional>
+#include <string>
+#include <sstream>
+#include <stdexcept>
+
+// Core function that might throw.  Simulates a potentially failing operation.
+auto RiskyOperation(int input) -> std::optional<int> {
+  if (input < 0) {
+    throw std::runtime_error("Input cannot be negative");
+  }
+  if (input > 100) {
+    throw std::runtime_error("Input too large");
+  }
+  return input * 2;
+}
+
+// Non-throwing wrapper with detailed diagnostics.
+auto SafeRiskyOperation(int input, std::string* outErrorMessage) -> std::optional<int> {
+  std::stringstream log;
+  log << "Attempting RiskyOperation with input: " << input << std::endl;
+
+  try {
+    auto result = RiskyOperation(input);
+    log << "RiskyOperation succeeded with result: " << *result << std::endl;
+    return result;
+  } catch (const std::exception& e) {
+    log << "RiskyOperation failed with exception: " << e.what() << std::endl;
+    if (outErrorMessage) {
+      *outErrorMessage = e.what(); // Capture the error message.
+    }
+    return std::nullopt; // Return an empty optional to indicate failure.
+  }
+}
+
+// Example usage demonstrating fail-safe fallback.
+int main() {
+  int userInput = -5;
+  std::string errorMessage;
+
+  auto result = SafeRiskyOperation(userInput, &errorMessage);
+
+  if (result) {
+    // Operation succeeded.
+    // ... use the result
+  } else {
+    // Operation failed.  Implement fallback logic.
+    // Log the error message for diagnostics.
+    if (!errorMessage.empty()) {
+      // Log the error message
+    }
+    // Fallback to a default value or alternative behavior.
+    userInput = 0; // Use a default value.
+    auto defaultResult = SafeRiskyOperation(userInput, &errorMessage);
+    if(defaultResult){
+      //use default result
+    }
+  }
+  return 0;
+}
