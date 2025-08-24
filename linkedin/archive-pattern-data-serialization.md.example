@@ -1,0 +1,26 @@
+#include <string>
+#include <vector>
+#include <cstdint>
+
+struct PlayerUpdate {
+    uint32_t id;
+    std::string name;
+    std::vector<float> position;
+
+    // The single entry point for serialization/deserialization.
+    template <class Archive>
+    void Serialize(Archive& archive) {
+        archive.Serialize("id", id)
+               .Serialize("name", name)
+               .Serialize("position", position);
+    }
+};
+
+// Generic Archive interface.  Concrete implementations handle specific formats.
+class Archive {
+public:
+    virtual ~Archive() = default;
+    virtual &Serialize(const char* key, uint32_t& value) = 0;
+    virtual &Serialize(const char* key, std::string& value) = 0;
+    virtual &Serialize(const char* key, std::vector<float>& value) = 0;
+};
