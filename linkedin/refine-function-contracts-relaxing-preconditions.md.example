@@ -1,0 +1,7 @@
+// Refined function contract: ensure spell is removed, no error if already gone.
+void RemoveSpell(bool& spell_learned, int spell_id) {
+  if (spell_learned) {
+    spell_learned = false; // Ensure spell is removed, regardless of initial state.
+  }
+  // No log message if spell was already removed.
+}
