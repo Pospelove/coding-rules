@@ -1,0 +1,26 @@
+// Decompose Large Methods into Specialized Handlers
+class DamageProcessor {
+public:
+  void processDamage(int damageType, int amount, int targetHealth) {
+    if (damageType == 1) {
+      handlePhysicalDamage(amount, targetHealth);
+    } else if (damageType == 2) {
+      handleMagicalDamage(amount, targetHealth);
+    } else {
+      handleDefaultDamage(amount, targetHealth);
+    }
+  }
+
+private:
+  void handlePhysicalDamage(int amount, int targetHealth) {
+    // Specific logic for physical damage
+  }
+
+  void handleMagicalDamage(int amount, int targetHealth) {
+    // Specific logic for magical damage
+  }
+
+  void handleDefaultDamage(int amount, int targetHealth) {
+    // Default damage handling logic
+  }
+};
